@@ -1,0 +1,524 @@
+--// HOLD JUP
+--// LocalScript
+--// StarterPlayer > StarterPlayerScripts
+--// Para tu propia experiencia de Roblox Studio
+
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local LP = Players.LocalPlayer
+local PlayerGui = LP:WaitForChild("PlayerGui")
+local Camera = workspace.CurrentCamera
+
+--==================================================
+-- LIMPIAR VERSION ANTERIOR
+--==================================================
+
+local old = PlayerGui:FindFirstChild("HOLD_JUP")
+if old then
+    old:Destroy()
+end
+
+--==================================================
+-- ESTADO
+--==================================================
+
+local Aimbot = false
+local Target = nil
+
+local NormalSpeed = 16
+local AimbotSpeed = 190
+
+local AimBox = nil
+local AimLine = nil
+local LineA0 = nil
+local LineA1 = nil
+
+--==================================================
+-- GUI
+--==================================================
+
+local Gui = Instance.new("ScreenGui")
+Gui.Name = "HOLD_JUP"
+Gui.ResetOnSpawn = false
+Gui.IgnoreGuiInset = true
+Gui.Parent = PlayerGui
+
+local Main = Instance.new("Frame")
+Main.Size = UDim2.fromOffset(300,170)
+Main.Position = UDim2.new(0.5,-150,0.5,-85)
+Main.BackgroundColor3 = Color3.fromRGB(18,18,23)
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.Parent = Gui
+
+Instance.new("UICorner",Main).CornerRadius = UDim.new(0,14)
+
+local Stroke = Instance.new("UIStroke")
+Stroke.Color = Color3.fromRGB(255,255,255)
+Stroke.Thickness = 1.5
+Stroke.Parent = Main
+
+--==================================================
+-- HEADER
+--==================================================
+
+local Header = Instance.new("Frame")
+Header.Size = UDim2.new(1,0,0,50)
+Header.BackgroundColor3 = Color3.fromRGB(30,30,37)
+Header.BorderSizePixel = 0
+Header.Active = true
+Header.Parent = Main
+
+Instance.new("UICorner",Header).CornerRadius = UDim.new(0,14)
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1,-100,1,0)
+Title.Position = UDim2.fromOffset(15,0)
+Title.BackgroundTransparency = 1
+Title.Text = "HOLD JUP"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.TextSize = 21
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Header
+
+local Min = Instance.new("TextButton")
+Min.Size = UDim2.fromOffset(40,40)
+Min.Position = UDim2.new(1,-88,0,5)
+Min.BackgroundColor3 = Color3.fromRGB(55,55,65)
+Min.BorderSizePixel = 0
+Min.Text = "−"
+Min.TextColor3 = Color3.new(1,1,1)
+Min.TextSize = 25
+Min.Font = Enum.Font.GothamBold
+Min.Parent = Header
+
+Instance.new("UICorner",Min).CornerRadius = UDim.new(1,0)
+
+local Close = Instance.new("TextButton")
+Close.Size = UDim2.fromOffset(40,40)
+Close.Position = UDim2.new(1,-44,0,5)
+Close.BackgroundColor3 = Color3.fromRGB(130,40,40)
+Close.BorderSizePixel = 0
+Close.Text = "×"
+Close.TextColor3 = Color3.new(1,1,1)
+Close.TextSize = 25
+Close.Font = Enum.Font.GothamBold
+Close.Parent = Header
+
+Instance.new("UICorner",Close).CornerRadius = UDim.new(1,0)
+
+--==================================================
+-- BOTÓN AIMBOT
+--==================================================
+
+local AimbotButton = Instance.new("TextButton")
+AimbotButton.Size = UDim2.fromOffset(240,60)
+AimbotButton.Position = UDim2.new(0.5,-120,0,80)
+AimbotButton.BackgroundColor3 = Color3.fromRGB(35,35,43)
+AimbotButton.BorderSizePixel = 0
+AimbotButton.Text = "AIMBOT : OFF"
+AimbotButton.TextColor3 = Color3.new(1,1,1)
+AimbotButton.TextSize = 17
+AimbotButton.Font = Enum.Font.GothamBold
+AimbotButton.Parent = Main
+
+Instance.new("UICorner",AimbotButton).CornerRadius = UDim.new(0,10)
+
+--==================================================
+-- JUGADOR MÁS CERCANO
+--==================================================
+
+local function GetClosestPlayer()
+
+    local Character = LP.Character
+    local Root = Character and Character:FindFirstChild("HumanoidRootPart")
+
+    if not Root then
+        return nil
+    end
+
+    local Closest = nil
+    local ClosestDistance = math.huge
+
+    for _,Player in ipairs(Players:GetPlayers()) do
+
+        if Player ~= LP and Player.Character then
+
+            local OtherRoot =
+                Player.Character:FindFirstChild("HumanoidRootPart")
+
+            local Head =
+                Player.Character:FindFirstChild("Head")
+
+            local Humanoid =
+                Player.Character:FindFirstChildOfClass("Humanoid")
+
+            if OtherRoot
+                and Head
+                and Humanoid
+                and Humanoid.Health > 0 then
+
+                local Distance =
+                    (Root.Position - OtherRoot.Position).Magnitude
+
+                if Distance < ClosestDistance then
+                    ClosestDistance = Distance
+                    Closest = Player
+                end
+            end
+        end
+    end
+
+    return Closest
+end
+
+--==================================================
+-- VISUALES
+--==================================================
+
+local function RemoveAimVisuals()
+
+    if AimBox then
+        AimBox:Destroy()
+        AimBox = nil
+    end
+
+    if AimLine then
+        AimLine:Destroy()
+        AimLine = nil
+    end
+
+    LineA0 = nil
+    LineA1 = nil
+end
+
+local function CreateAimVisuals()
+
+    RemoveAimVisuals()
+
+    AimBox = Instance.new("SelectionBox")
+    AimBox.Name = "HOLD_JUP_WHITE_BOX"
+    AimBox.LineThickness = 0.04
+    AimBox.Color3 = Color3.new(1,1,1)
+    AimBox.SurfaceTransparency = 1
+    AimBox.Parent = workspace
+
+    AimLine = Instance.new("Beam")
+    AimLine.Name = "HOLD_JUP_WHITE_LINE"
+    AimLine.Color = ColorSequence.new(Color3.new(1,1,1))
+    AimLine.Width0 = 0.025
+    AimLine.Width1 = 0.025
+    AimLine.FaceCamera = true
+    AimLine.LightEmission = 1
+    AimLine.Parent = workspace
+end
+
+--==================================================
+-- ACTIVAR / DESACTIVAR
+--==================================================
+
+AimbotButton.MouseButton1Click:Connect(function()
+
+    Aimbot = not Aimbot
+
+    if Aimbot then
+
+        AimbotButton.Text = "AIMBOT : ON"
+        AimbotButton.BackgroundColor3 =
+            Color3.fromRGB(45,90,55)
+
+        CreateAimVisuals()
+
+        --==================================================
+        -- AIMBOT + TELETRANSPORTE CADA 0.5s
+        --==================================================
+
+        task.spawn(function()
+
+            while Aimbot do
+
+                local Character = LP.Character
+
+                local Root =
+                    Character and
+                    Character:FindFirstChild("HumanoidRootPart")
+
+                local Humanoid =
+                    Character and
+                    Character:FindFirstChildOfClass("Humanoid")
+
+                Target = GetClosestPlayer()
+
+                -- SPEED 190
+                if Humanoid then
+                    Humanoid.WalkSpeed = AimbotSpeed
+                end
+
+                -- INF HEALTH
+                if Humanoid then
+                    Humanoid.Health = Humanoid.MaxHealth
+                end
+
+                -- TELETRANSPORTE
+                if Root and Target and Target.Character then
+
+                    local TargetRoot =
+                        Target.Character:FindFirstChild(
+                            "HumanoidRootPart"
+                        )
+
+                    if TargetRoot then
+
+                        Root.CFrame =
+                            TargetRoot.CFrame *
+                            CFrame.new(0,0,2)
+
+                    end
+                end
+
+                task.wait(0.5)
+
+            end
+
+        end)
+
+    else
+
+        AimbotButton.Text = "AIMBOT : OFF"
+        AimbotButton.BackgroundColor3 =
+            Color3.fromRGB(35,35,43)
+
+        Target = nil
+
+        RemoveAimVisuals()
+
+        -- VOLVER A VELOCIDAD NORMAL
+        local Character = LP.Character
+
+        local Humanoid =
+            Character and
+            Character:FindFirstChildOfClass("Humanoid")
+
+        if Humanoid then
+            Humanoid.WalkSpeed = NormalSpeed
+        end
+
+    end
+
+end)
+
+--==================================================
+-- ACTUALIZACIÓN VISUAL
+--==================================================
+
+RunService.RenderStepped:Connect(function()
+
+    if not Aimbot then
+        return
+    end
+
+    local Character = LP.Character
+
+    if not Character then
+        return
+    end
+
+    local Root =
+        Character:FindFirstChild("HumanoidRootPart")
+
+    local Humanoid =
+        Character:FindFirstChildOfClass("Humanoid")
+
+    if Humanoid then
+
+        Humanoid.WalkSpeed = AimbotSpeed
+
+        -- Mantener vida al máximo
+        Humanoid.Health = Humanoid.MaxHealth
+
+    end
+
+    Target = GetClosestPlayer()
+
+    if Target and Target.Character then
+
+        local Head =
+            Target.Character:FindFirstChild("Head")
+
+        if Head then
+
+            -- APUNTAR A LA CABEZA
+            Camera.CFrame = CFrame.lookAt(
+                Camera.CFrame.Position,
+                Head.Position
+            )
+
+            -- CUADRO BLANCO
+            if AimBox then
+                AimBox.Adornee = Target.Character
+            end
+
+            -- LÍNEA BLANCA
+            if AimLine and Root then
+
+                LineA0 =
+                    Root:FindFirstChild(
+                        "HOLD_JUP_LINE_START"
+                    )
+
+                if not LineA0 then
+
+                    LineA0 = Instance.new("Attachment")
+                    LineA0.Name =
+                        "HOLD_JUP_LINE_START"
+                    LineA0.Parent = Root
+
+                end
+
+                LineA1 =
+                    Head:FindFirstChild(
+                        "HOLD_JUP_LINE_END"
+                    )
+
+                if not LineA1 then
+
+                    LineA1 = Instance.new("Attachment")
+                    LineA1.Name =
+                        "HOLD_JUP_LINE_END"
+                    LineA1.Parent = Head
+
+                end
+
+                AimLine.Attachment0 = LineA0
+                AimLine.Attachment1 = LineA1
+
+            end
+
+        end
+
+    else
+
+        if AimBox then
+            AimBox.Adornee = nil
+        end
+
+    end
+
+end)
+
+--==================================================
+-- ARRASTRAR MENÚ
+--==================================================
+
+local Dragging = false
+local DragStart
+local StartPosition
+
+Header.InputBegan:Connect(function(Input)
+
+    if Input.UserInputType == Enum.UserInputType.MouseButton1
+    or Input.UserInputType == Enum.UserInputType.Touch then
+
+        Dragging = true
+        DragStart = Input.Position
+        StartPosition = Main.Position
+
+    end
+
+end)
+
+UIS.InputChanged:Connect(function(Input)
+
+    if not Dragging then
+        return
+    end
+
+    if Input.UserInputType == Enum.UserInputType.MouseMovement
+    or Input.UserInputType == Enum.UserInputType.Touch then
+
+        local Delta =
+            Input.Position - DragStart
+
+        Main.Position = UDim2.new(
+            StartPosition.X.Scale,
+            StartPosition.X.Offset + Delta.X,
+            StartPosition.Y.Scale,
+            StartPosition.Y.Offset + Delta.Y
+        )
+
+    end
+
+end)
+
+UIS.InputEnded:Connect(function(Input)
+
+    if Input.UserInputType == Enum.UserInputType.MouseButton1
+    or Input.UserInputType == Enum.UserInputType.Touch then
+
+        Dragging = false
+
+    end
+
+end)
+
+--==================================================
+-- MINIMIZAR
+--==================================================
+
+local Open = Instance.new("TextButton")
+Open.Size = UDim2.fromOffset(55,55)
+Open.Position = UDim2.new(0,20,0.5,-27)
+Open.BackgroundColor3 = Color3.fromRGB(25,25,30)
+Open.BorderSizePixel = 0
+Open.Text = "J"
+Open.TextColor3 = Color3.new(1,1,1)
+Open.TextSize = 23
+Open.Font = Enum.Font.GothamBold
+Open.Visible = false
+Open.Parent = Gui
+
+Instance.new("UICorner",Open).CornerRadius = UDim.new(1,0)
+
+Min.MouseButton1Click:Connect(function()
+
+    Main.Visible = false
+    Open.Visible = true
+
+end)
+
+Open.MouseButton1Click:Connect(function()
+
+    Main.Visible = true
+    Open.Visible = false
+
+end)
+
+--==================================================
+-- CERRAR
+--==================================================
+
+Close.MouseButton1Click:Connect(function()
+
+    Aimbot = false
+    Target = nil
+
+    RemoveAimVisuals()
+
+    local Character = LP.Character
+
+    local Humanoid =
+        Character and
+        Character:FindFirstChildOfClass("Humanoid")
+
+    if Humanoid then
+        Humanoid.WalkSpeed = NormalSpeed
+    end
+
+    Gui:Destroy()
+
+end)
+
+print("HOLD JUP cargado correctamente")
